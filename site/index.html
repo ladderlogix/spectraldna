@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SpectralDNA — RF Emission Fingerprinting</title>
+<style>
+  :root {
+    --bg: #0D1117;
+    --bg-card: #161B22;
+    --border: #30363D;
+    --text: #C9D1D9;
+    --text-dim: #8B949E;
+    --ident: #58A6FF;
+    --phy: #FFA657;
+    --hash: #7EE787;
+    --wifi: #5500FF;
+    --ble: #E63946;
+    --lte: #2A9D8F;
+    --fiveg: #264653;
+    --tpms: #7209B7;
+    --rke: #4361EE;
+    --ant: #F77F00;
+    --gnss: #06D6A0;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  code, .mono {
+    font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+  }
+
+  a { color: var(--ident); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  /* ── Nav ──────────────────────────────────────────────── */
+  nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    background: rgba(13, 17, 23, 0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 0;
+  }
+  nav .container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .nav-logo {
+    font-weight: 700;
+    font-size: 18px;
+    color: var(--hash);
+    letter-spacing: 2px;
+  }
+  .nav-links { display: flex; gap: 24px; }
+  .nav-links a {
+    color: var(--text-dim);
+    font-size: 14px;
+    font-weight: 500;
+    transition: color 0.2s;
+  }
+  .nav-links a:hover { color: var(--text); text-decoration: none; }
+
+  /* ── Hero ─────────────────────────────────────────────── */
+  .hero {
+    padding: 140px 0 80px;
+    text-align: center;
+    position: relative;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(85,0,255,0.08) 0%, rgba(230,57,70,0.05) 40%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero h1 {
+    font-size: clamp(42px, 6vw, 72px);
+    font-weight: 800;
+    letter-spacing: 4px;
+    margin-bottom: 8px;
+    position: relative;
+  }
+  .hero h1 .spectral { color: var(--hash); }
+  .hero h1 .dna { color: var(--ident); }
+  .hero .tagline {
+    font-size: clamp(16px, 2.5vw, 22px);
+    color: var(--text-dim);
+    max-width: 640px;
+    margin: 0 auto 32px;
+    line-height: 1.5;
+  }
+  .hero .hash-demo {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 13px;
+    color: var(--hash);
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 24px;
+    display: inline-block;
+    letter-spacing: 1px;
+    word-break: break-all;
+    max-width: 90vw;
+  }
+  .hero .hash-label {
+    display: block;
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+    margin-bottom: 4px;
+  }
+
+  /* ── Section ─────────────────────────────────────────── */
+  section { padding: 80px 0; }
+  .section-title {
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 12px;
+  }
+  .section-subtitle {
+    color: var(--text-dim);
+    font-size: 16px;
+    margin-bottom: 48px;
+    max-width: 600px;
+  }
+
+  /* ── Protocol Grid ───────────────────────────────────── */
+  .protocol-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 16px;
+  }
+  .protocol-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+  .protocol-card:hover {
+    transform: translateY(-2px);
+  }
+  .protocol-card-header {
+    padding: 8px 16px;
+    font-weight: 700;
+    font-size: 13px;
+    color: white;
+    letter-spacing: 1px;
+  }
+  .protocol-card-body {
+    padding: 16px;
+  }
+  .protocol-card-body .freq {
+    font-size: 12px;
+    color: var(--phy);
+    font-family: 'JetBrains Mono', monospace;
+    margin-bottom: 8px;
+  }
+  .protocol-card-body .desc {
+    font-size: 13px;
+    color: var(--text-dim);
+    line-height: 1.5;
+  }
+  .protocol-card-body .tags {
+    margin-top: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .tag {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: rgba(88, 166, 255, 0.1);
+    color: var(--ident);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .tag.phy {
+    background: rgba(255, 166, 87, 0.1);
+    color: var(--phy);
+  }
+
+  /* ── Features ────────────────────────────────────────── */
+  .feature-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 24px;
+  }
+  .feature-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+  }
+  .feature-card h3 {
+    font-size: 18px;
+    margin-bottom: 8px;
+    color: var(--text);
+  }
+  .feature-card h3 .accent { color: var(--ident); }
+  .feature-card p {
+    font-size: 14px;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+
+  /* ── How It Works ────────────────────────────────────── */
+  .pipeline {
+    display: flex;
+    gap: 0;
+    align-items: stretch;
+    overflow-x: auto;
+    padding-bottom: 8px;
+  }
+  .pipeline-step {
+    flex: 1;
+    min-width: 180px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    position: relative;
+  }
+  .pipeline-step:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    right: -13px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 0;
+    height: 0;
+    border-top: 10px solid transparent;
+    border-bottom: 10px solid transparent;
+    border-left: 12px solid var(--border);
+    z-index: 1;
+  }
+  .pipeline-step:not(:last-child) {
+    margin-right: 24px;
+  }
+  .pipeline-step .step-num {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--hash);
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+  }
+  .pipeline-step .step-title {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .pipeline-step .step-desc {
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.5;
+  }
+
+  /* ── Terminal Demo ───────────────────────────────────── */
+  .terminal {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    max-width: 700px;
+    margin: 0 auto;
+  }
+  .terminal-bar {
+    background: #1C2128;
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .terminal-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+  }
+  .terminal-dot.r { background: #F85149; }
+  .terminal-dot.y { background: #F0E68C; }
+  .terminal-dot.g { background: #7EE787; }
+  .terminal-title {
+    margin-left: 8px;
+    font-size: 12px;
+    color: var(--text-dim);
+    font-family: monospace;
+  }
+  .terminal-body {
+    padding: 20px;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 12px;
+    line-height: 1.8;
+    overflow-x: auto;
+  }
+  .terminal-body .prompt { color: var(--hash); }
+  .terminal-body .cmd { color: var(--text); }
+  .terminal-body .flag { color: var(--phy); }
+  .terminal-body .str { color: var(--ident); }
+  .terminal-body .comment { color: var(--text-dim); }
+
+  /* ── Architecture ────────────────────────────────────── */
+  .arch-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  .arch-table th {
+    text-align: left;
+    padding: 10px 16px;
+    border-bottom: 2px solid var(--border);
+    color: var(--text-dim);
+    font-size: 12px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .arch-table td {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .arch-table td:first-child {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--ident);
+    white-space: nowrap;
+  }
+  .arch-table tr:hover td {
+    background: rgba(88, 166, 255, 0.03);
+  }
+
+  /* ── Get Started ─────────────────────────────────────── */
+  .get-started {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 48px;
+    text-align: center;
+  }
+  .get-started h2 {
+    font-size: 28px;
+    margin-bottom: 16px;
+  }
+  .get-started p {
+    color: var(--text-dim);
+    max-width: 500px;
+    margin: 0 auto 32px;
+  }
+  .get-started .code-block {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 24px;
+    text-align: left;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    max-width: 600px;
+    margin: 0 auto;
+    line-height: 2;
+    overflow-x: auto;
+  }
+
+  /* ── Footer ──────────────────────────────────────────── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 32px 0;
+    text-align: center;
+    font-size: 13px;
+    color: var(--text-dim);
+  }
+  footer .footer-hash {
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--hash);
+    font-size: 11px;
+    margin-top: 8px;
+  }
+
+  /* ── Responsive ──────────────────────────────────────── */
+  @media (max-width: 768px) {
+    .nav-links { display: none; }
+    .pipeline {
+      flex-direction: column;
+    }
+    .pipeline-step:not(:last-child) {
+      margin-right: 0;
+      margin-bottom: 16px;
+    }
+    .pipeline-step:not(:last-child)::after {
+      display: none;
+    }
+    .get-started { padding: 32px 20px; }
+    section { padding: 48px 0; }
+    .hero { padding: 120px 0 48px; }
+  }
+
+  /* ── Subtle animations ───────────────────────────────── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .hero h1, .hero .tagline, .hero .hash-demo {
+    animation: fadeUp 0.6s ease-out both;
+  }
+  .hero .tagline { animation-delay: 0.1s; }
+  .hero .hash-demo { animation-delay: 0.2s; }
+</style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav>
+  <div class="container">
+    <div class="nav-logo">SPECTRAL DNA</div>
+    <div class="nav-links">
+      <a href="#protocols">Protocols</a>
+      <a href="#features">Features</a>
+      <a href="#how-it-works">How It Works</a>
+      <a href="#architecture">Architecture</a>
+      <a href="#get-started">Get Started</a>
+    </div>
+  </div>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="container">
+    <h1><span class="spectral">SPECTRAL</span><span class="dna">DNA</span></h1>
+    <p class="tagline">
+      Passive RF emission fingerprinting across 8 wireless protocols.
+      Every transmitter leaves a physical-layer signature that cannot be spoofed.
+    </p>
+    <div class="hash-demo">
+      <span class="hash-label">COMPOSITE SPECTRALDNA HASH</span>
+      a7f3c9e1b8d4f2a6c0e5d3b9f7a1c8e4d2b6f0a3c9e7d5b1f8a4c2e0d6b3f9a7
+    </div>
+  </div>
+</section>
+
+<!-- Protocols -->
+<section id="protocols">
+  <div class="container">
+    <h2 class="section-title">8 Protocols. One Fingerprint.</h2>
+    <p class="section-subtitle">
+      Each protocol module captures raw IQ samples and extracts both identity markers and hardware-intrinsic RF signatures.
+    </p>
+    <div class="protocol-grid">
+
+      <div class="protocol-card" style="border-top: 3px solid var(--wifi);">
+        <div class="protocol-card-header" style="background: var(--wifi);">WI-FI 802.11</div>
+        <div class="protocol-card-body">
+          <div class="freq">2.412 &ndash; 5.785 GHz &middot; 20 Msps</div>
+          <div class="desc">OFDM preamble detection, CFO estimation from Short Training Field autocorrelation, transmitter clustering by crystal offset.</div>
+          <div class="tags">
+            <span class="tag">MAC</span>
+            <span class="tag">SSID</span>
+            <span class="tag">OUI</span>
+            <span class="tag phy">CFO</span>
+            <span class="tag phy">RSSI</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="protocol-card" style="border-top: 3px solid var(--ble);">
+        <div class="protocol-card-header" style="background: var(--ble);">BLE ADVERTISING</div>
+        <div class="protocol-card-body">
+          <div class="freq">2.402 / 2.426 / 2.480 GHz &middot; 4 Msps</div>
+          <div class="desc">GFSK demodulation, access address correlation, PDU parsing with data dewhitening, Apple Continuity decoding.</div>
+          <div class="tags">
+            <span class="tag">MAC</span>
+            <span class="tag">Name</span>
+            <span class="tag">Mfr ID</span>
+            <span class="tag phy">Clock Drift</span>
+            <span class="tag phy">Interval</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="protocol-card" style="border-top: 3px solid var(--lte);">
+        <div class="protocol-card-header" style="background: var(--lte);">LTE (4G)</div>
+        <div class="protocol-card-body">
+          <div class="freq">617 MHz &ndash; 2.69 GHz &middot; B2/4/12/41/71</div>
+          <div class="desc">PSS correlation via Zadoff-Chu sequences, cell search across 5 bands, IQ imbalance and PA IMD3 measurement.</div>
+          <div class="tags">
+            <span class="tag">PCI</span>
+            <span class="tag">EARFCN</span>
+            <span class="tag">Carrier</span>
+            <span class="tag phy">IQ Imbalance</span>
+            <span class="tag phy">IMD3</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="protocol-card" style="border-top: 3px solid var(--fiveg);">
+        <div class="protocol-card-header" style="background: var(--fiveg);">5G NR</div>
+        <div class="protocol-card-body">
+          <div class="freq">3.3 &ndash; 4.2 GHz &middot; n77/n78 C-Band</div>
+          <div class="desc">NR PSS m-sequence detection, SSB timing drift measurement, per-beam RSRP across multiple gNodeB beams.</div>
+          <div class="tags">
+            <span class="tag">Cell ID</span>
+            <span class="tag">Carrier</span>
+            <span class="tag">Beams</span>
+            <span class="tag phy">SSB Drift</span>
+            <span class="tag phy">RSRP</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="protocol-card" style="border-top: 3px solid var(--tpms);">
+        <div class="protocol-card-header" style="background: var(--tpms);">TPMS</div>
+        <div class="protocol-card-body">
+          <div class="freq">315 MHz &middot; OOK / Manchester</div>
+          <div class="desc">Envelope detection with adaptive thresholding, Manchester decoding, Schrader/Continental/Sensata frame parsing.</div>
+          <div class="tags">
+            <span class="tag">Sensor ID</span>
+            <span class="tag">Pressure</span>
+            <span class="tag">Temp</span>
+            <span class="tag phy">Bit Rate</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="protocol-card" style="border-top: 3px solid var(--rke);">
+        <div class="protocol-card-header" style="background: var(--rke);">RKE</div>
+        <div class="protocol-card-body">
+          <div class="freq">315 MHz &middot; ASK</div>
+          <div class="desc">ASK burst detection, PA ramp profile analysis (rise/fall/overshoot), KeeLoq-style rolling code extraction.</div>
+          <div class="tags">
+            <span class="tag">Fixed Code</span>
+            <span class="tag">Rolling Code</span>
+            <span class="tag phy">Rise Time</span>
+            <span class="tag phy">PA Profile</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="protocol-card" style="border-top: 3px solid var(--ant);">
+        <div class="protocol-card-header" style="background: var(--ant);">ANT / ANT+</div>
+        <div class="protocol-card-body">
+          <div class="freq">2.457 / 2.466 GHz &middot; 1 Mbps GFSK</div>
+          <div class="desc">Sync byte (0xA4) correlation, checksum validation, ANT+ device profile parsing (HR, power, speed).</div>
+          <div class="tags">
+            <span class="tag">Device #</span>
+            <span class="tag">Type</span>
+            <span class="tag phy">Clock Drift</span>
+            <span class="tag phy">Interval</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="protocol-card" style="border-top: 3px solid var(--gnss);">
+        <div class="protocol-card-header" style="background: var(--gnss);">GPS / GNSS</div>
+        <div class="protocol-card-body">
+          <div class="freq">1.57542 / 1.17645 GHz &middot; L1/L5</div>
+          <div class="desc">Passive band power measurement, satellite PRN detection via C/A code correlation, interference characterization.</div>
+          <div class="tags">
+            <span class="tag">Satellite PRNs</span>
+            <span class="tag phy">Band Power</span>
+            <span class="tag phy">Interference</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- Features -->
+<section id="features" style="background: rgba(22,27,34,0.5);">
+  <div class="container">
+    <h2 class="section-title">Beyond Capture</h2>
+    <p class="section-subtitle">
+      Enrichment, persistence, and presence detection built on top of the raw fingerprinting engine.
+    </p>
+    <div class="feature-grid">
+      <div class="feature-card">
+        <h3><span class="accent">Offline</span> Data Enrichment</h3>
+        <p>
+          170+ OUI manufacturer lookups, 47 BLE company IDs, 31 GATT service UUIDs,
+          LTE carrier identification from EARFCN, 5G NR carrier mapping, ANT+ device type resolution.
+          MAC randomization detection flags privacy-rotated addresses. All offline, no network calls.
+        </p>
+      </div>
+      <div class="feature-card">
+        <h3><span class="accent">Environment</span> Snapshots</h3>
+        <p>
+          Save a baseline scan as JSON. Compare future scans against it to see which devices
+          are still PRESENT, which are ABSENT, and which are NEW. Each match includes an RF
+          similarity score computed from CFO, clock drift, and RSSI deltas.
+        </p>
+      </div>
+      <div class="feature-card">
+        <h3><span class="accent">Subject</span> Profiles</h3>
+        <p>
+          Associate scans with people. Enroll a subject, repeat scans to strengthen their profile
+          (devices seen in &gt;50% of scans become "stable"), then check if their personal devices
+          are present in any future scan. Stored locally at <code>~/.spectral_dna/subjects/</code>.
+        </p>
+      </div>
+      <div class="feature-card">
+        <h3><span class="accent">RF Environment</span> Summary</h3>
+        <p>
+          2.4 GHz congestion scoring (Wi-Fi + BLE + ANT device density),
+          MAC randomization ratio across all detected devices, active LTE/5G
+          carrier diversity, and per-protocol device counts.
+        </p>
+      </div>
+      <div class="feature-card">
+        <h3><span class="accent">Physical-Layer</span> Fingerprints</h3>
+        <p>
+          CFO from oscillator crystal offset, IQ imbalance from mixer/DAC manufacturing variance,
+          clock drift from BLE/ANT timer crystals, PA rise/fall profile from analog circuitry.
+          These signatures are hardware-intrinsic and cannot be spoofed without replacing components.
+        </p>
+      </div>
+      <div class="feature-card">
+        <h3><span class="accent">Multi-Format</span> Output</h3>
+        <p>
+          Rich dark-themed terminal display, machine-readable JSON export, styled self-contained
+          HTML reports, and a SHA-256 composite hash over all collected values that changes if
+          any transmitter in the environment changes.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- How It Works -->
+<section id="how-it-works">
+  <div class="container">
+    <h2 class="section-title">How It Works</h2>
+    <p class="section-subtitle">
+      From antenna to composite hash in four stages.
+    </p>
+    <div class="pipeline">
+      <div class="pipeline-step">
+        <div class="step-num">01</div>
+        <div class="step-title">IQ Capture</div>
+        <div class="step-desc">HackRF One Pro captures raw 8-bit IQ samples via <code>hackrf_transfer</code> across each protocol's frequency bands.</div>
+      </div>
+      <div class="pipeline-step">
+        <div class="step-num">02</div>
+        <div class="step-title">Demodulation</div>
+        <div class="step-desc">Protocol-specific DSP: OFDM FFT for Wi-Fi, GFSK FM discriminator for BLE/ANT, Zadoff-Chu correlation for LTE/5G, OOK/ASK envelope detection for TPMS/RKE.</div>
+      </div>
+      <div class="pipeline-step">
+        <div class="step-num">03</div>
+        <div class="step-title">Extraction</div>
+        <div class="step-desc">Protocol-layer identifiers (MACs, cell IDs, sensor IDs) and physical-layer signatures (CFO, clock drift, IQ imbalance, PA characteristics) are extracted from each transmitter.</div>
+      </div>
+      <div class="pipeline-step">
+        <div class="step-num">04</div>
+        <div class="step-title">Fingerprint</div>
+        <div class="step-desc">All values are aggregated, enriched with offline lookups, and hashed (SHA-256) to produce the composite SpectralDNA identifier.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Terminal Demo -->
+<section style="background: rgba(22,27,34,0.5);">
+  <div class="container">
+    <h2 class="section-title" style="text-align:center;">CLI</h2>
+    <p class="section-subtitle" style="text-align:center; margin-left:auto; margin-right:auto;">
+      Single command. All protocols. Full fingerprint.
+    </p>
+    <div class="terminal">
+      <div class="terminal-bar">
+        <div class="terminal-dot r"></div>
+        <div class="terminal-dot y"></div>
+        <div class="terminal-dot g"></div>
+        <span class="terminal-title">spectral_dna</span>
+      </div>
+      <div class="terminal-body">
+        <span class="comment"># Full scan with JSON + HTML export</span><br>
+        <span class="prompt">$</span> <span class="cmd">python -m spectral_dna</span> <span class="flag">-t</span> <span class="str">"Office Baseline"</span> <span class="flag">-o</span> <span class="str">scan.json</span> <span class="flag">--html</span> <span class="str">scan.html</span><br>
+        <br>
+        <span class="comment"># Save environment snapshot</span><br>
+        <span class="prompt">$</span> <span class="cmd">python -m spectral_dna</span> <span class="flag">-t</span> <span class="str">"Office"</span> <span class="flag">--snapshot</span> <span class="str">baseline.json</span><br>
+        <br>
+        <span class="comment"># Compare against baseline (PRESENT / ABSENT / NEW)</span><br>
+        <span class="prompt">$</span> <span class="cmd">python -m spectral_dna</span> <span class="flag">-t</span> <span class="str">"Office Later"</span> <span class="flag">--compare</span> <span class="str">baseline.json</span><br>
+        <br>
+        <span class="comment"># Enroll a subject's device profile</span><br>
+        <span class="prompt">$</span> <span class="cmd">python -m spectral_dna</span> <span class="flag">-t</span> <span class="str">"Alice"</span> <span class="flag">--enroll</span> <span class="str">Alice</span><br>
+        <br>
+        <span class="comment"># Check if subject is present</span><br>
+        <span class="prompt">$</span> <span class="cmd">python -m spectral_dna</span> <span class="flag">--check</span> <span class="str">Alice</span><br>
+        <br>
+        <span class="comment"># Scan only Wi-Fi + BLE, fast durations</span><br>
+        <span class="prompt">$</span> <span class="cmd">python -m spectral_dna</span> <span class="flag">-p</span> <span class="str">wifi</span> <span class="flag">-p</span> <span class="str">ble</span> <span class="flag">--wifi-duration</span> <span class="str">1</span> <span class="flag">--ble-duration</span> <span class="str">2</span><br>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Architecture -->
+<section id="architecture">
+  <div class="container">
+    <h2 class="section-title">Architecture</h2>
+    <p class="section-subtitle">
+      Modular design. Each protocol is an independent module with a shared capture engine.
+    </p>
+    <div style="overflow-x: auto;">
+      <table class="arch-table">
+        <thead>
+          <tr>
+            <th>Module</th>
+            <th>Purpose</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>capture.py</td><td>HackRF capture engine &mdash; dual backend (hackrf_transfer CLI + SoapySDR fallback), IQ to complex64 conversion, CFO/IQ utilities</td></tr>
+          <tr><td>wifi_print.py</td><td>802.11 OFDM preamble detection, CFO clustering, scapy passive capture for protocol fields</td></tr>
+          <tr><td>ble_print.py</td><td>GFSK demodulation, BLE access address correlation, PDU parsing, advertising interval analysis</td></tr>
+          <tr><td>lte_print.py</td><td>PSS/SSS Zadoff-Chu correlation, cell search across 5 bands, IQ imbalance + PA IMD3</td></tr>
+          <tr><td>fiveg_print.py</td><td>NR PSS m-sequence detection, SSB timing drift, per-beam RSRP measurement</td></tr>
+          <tr><td>tpms_print.py</td><td>OOK envelope detection, Manchester decoding, multi-vendor TPMS frame parsing</td></tr>
+          <tr><td>rke_print.py</td><td>ASK burst detection, PA ramp profile analysis, KeeLoq-style code extraction</td></tr>
+          <tr><td>ant_print.py</td><td>ANT sync byte correlation, checksum validation, ANT+ profile parsing</td></tr>
+          <tr><td>gnss_print.py</td><td>Passive L1/L5 band power measurement, C/A code PRN detection</td></tr>
+          <tr><td>lookups.py</td><td>Offline lookup tables &mdash; OUI, BLE company IDs, GATT services, LTE/5G carriers, ANT types</td></tr>
+          <tr><td>environment.py</td><td>Snapshot save/load, device extraction, scan comparison, RF environment summary</td></tr>
+          <tr><td>subjects.py</td><td>Subject profiles &mdash; enroll, update, presence check, stored at ~/.spectral_dna/</td></tr>
+          <tr><td>renderer.py</td><td>Rich terminal output, JSON export, styled HTML reports, comparison rendering</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- Get Started -->
+<section id="get-started" style="background: rgba(22,27,34,0.5);">
+  <div class="container">
+    <div class="get-started">
+      <h2>Get Started</h2>
+      <p>Connect a HackRF One Pro, install dependencies, and run your first scan.</p>
+      <div class="code-block">
+        <span style="color:var(--text-dim);"># Clone and install</span><br>
+        <span style="color:var(--hash);">$</span> <span>git clone &lt;repo-url&gt; && cd spectralDNA</span><br>
+        <span style="color:var(--hash);">$</span> <span>pip install -r requirements.txt</span><br>
+        <br>
+        <span style="color:var(--text-dim);"># Run your first scan</span><br>
+        <span style="color:var(--hash);">$</span> <span>python -m spectral_dna <span style="color:var(--phy);">-t</span> <span style="color:var(--ident);">"First Scan"</span> <span style="color:var(--phy);">-o</span> <span style="color:var(--ident);">scan.json</span></span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer>
+  <div class="container">
+    <div>SpectralDNA &mdash; Passive RF Emission Fingerprinting</div>
+    <div class="footer-hash">HackRF One Pro &middot; Python &middot; NumPy &middot; SciPy &middot; Rich</div>
+  </div>
+</footer>
+
+</body>
+</html>

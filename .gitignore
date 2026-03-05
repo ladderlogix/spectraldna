@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Scan outputs (generated files)
+fingerprint.json
+fingerprint.html
+
+# Environment
+.env
+*.log
+
+# IDE
+.vscode/
+.idea/
